@@ -45,7 +45,7 @@ void Neuron::updateInputWeights(Layer &prevLayer){
     for(unsigned int neuronCounter =0; neuronCounter<prevLayer.size(); neuronCounter++){
         Neuron &neuron = prevLayer[neuronCounter];
         double oldDeltaWeight = neuron.outputWeights[myIndex].deltaWeight;
-        double newDeltaWeight = eta * neuron.getOutputVal() * gradient * alpha * oldDeltaWeight;
+        double newDeltaWeight = eta * neuron.getOutputVal() * gradient + alpha * oldDeltaWeight;
         neuron.outputWeights[myIndex].deltaWeight = newDeltaWeight;
         neuron.outputWeights[myIndex].weight += newDeltaWeight;
     }
@@ -129,8 +129,9 @@ void Net::getResults(std::vector<double> &resultVals) const{
 Net::Net(const std::vector<unsigned> &topology){
 
     unsigned int numOfLayers = topology.size();
-    for (unsigned int layerCounter = 0; layerCounter<numOfLayers; layerCounter++){
+    for (unsigned int layerCounter = 0; layerCounter<numOfLayers; ++layerCounter){
         layers.push_back(Layer());
+        //unsigned numOfOutputs = layerCounter == topology.size() - 1 ? 0 : topology[layerCounter + 1];
         unsigned int numOfOutputs;
         if (layerCounter == topology.size() - 1) numOfOutputs = 0;
         else numOfOutputs = topology[layerCounter+1];
@@ -168,7 +169,8 @@ void Net::backProp(const std::vector<double> &targetVals){
     error /= outputLayer.size() -1;
     error = sqrt(error);
 
-    recentAverageError = (recentAverageError + recentAverageSmoothigFactor + error)/(recentAverageSmoothigFactor +1 );
+    recentAverageError = (recentAverageError * recentAverageSmoothigFactor + error)
+                        /(recentAverageSmoothigFactor +1 );
 
     //output gradient
     for (unsigned int n = 0; n<outputLayer.size() -1; n++){
@@ -176,17 +178,17 @@ void Net::backProp(const std::vector<double> &targetVals){
     }
 
     //hiddn gradients
-    for (unsigned int layerCounter = layers.size()-2; layerCounter>0; layerCounter--){
+    for (unsigned int layerCounter = layers.size()-2; layerCounter>0; --layerCounter){
         Layer &hiddenLayer = layers[layerCounter];
         Layer &nextLayer = layers[layerCounter+1];
 
-        for (unsigned int neuronCounter = 0; neuronCounter<hiddenLayer.size();neuronCounter++){
+        for (unsigned int neuronCounter = 0; neuronCounter<hiddenLayer.size();++neuronCounter){
             hiddenLayer[neuronCounter].calcHiddenGradient(nextLayer);
         }
     }
 
     //update connection weights
-    for (unsigned int layerCounter = layers.size() - 1; layerCounter>0; layerCounter--){
+    for (unsigned int layerCounter = layers.size() - 1; layerCounter>0; --layerCounter){
         Layer &currLayer = layers[layerCounter];
         Layer &prevLayer = layers[layerCounter-1];
 
@@ -202,8 +204,7 @@ int main(int argc, char *argv[]){
 
     std::vector<unsigned> topology;
     topology.push_back(4);
-    topology.push_back(4);
-    topology.push_back(4);
+    topology.push_back(16);
     topology.push_back(4);
     std::vector<double> inputVals;
     std::vector<double> targetVals;
@@ -228,21 +229,21 @@ int main(int argc, char *argv[]){
             inputVals.push_back(val);
         }
         for (unsigned int i=0; i<4; i++){
-            dataFile >> val;
-            targetVals.push_back(val);
+        dataFile >> val;
+        targetVals.push_back(val);
         }
         myNet.feedForward(inputVals);
         outFile << "Inputs:" << inputVals.at(0) << " "
-                << inputVals.at(1)<< " " << inputVals.at(2)
-                << " " << inputVals.at(3) << "\n";
+                << inputVals.at(1)<< " " << inputVals.at(2)<< 
+                " " << inputVals.at(3)<< "\n";
         myNet.getResults(resultVals);
         outFile << "Outputs:" << resultVals.at(0) << " "
-                << resultVals.at(1)<< " " << resultVals.at(2)
-                << " " << resultVals.at(3) << "\n";
+                << resultVals.at(1) << " " << resultVals.at(2) << " "
+                << resultVals.at(3) <<"\n";
         myNet.backProp(targetVals);
-        outFile << "Outputs:" << targetVals.at(0) << " "
-                << targetVals.at(1)<< " " << targetVals.at(2)
-                << " " << targetVals.at(3) << "\n";
+        outFile << "Expected Outputs:" << targetVals.at(0) << " " 
+                << targetVals.at(1) << " " << targetVals.at(2) << " "  
+                << targetVals.at(3) << "\n";
 
     }
 
